@@ -1,0 +1,14 @@
+# - Config file for the automaton_bringup package
+# It defines the following variables
+#  automaton_bringup_INCLUDE_DIRS - include directories for FooBar
+#  automaton_bringup_LIBRARIES    - libraries to link against
+#  automaton_bringup_EXECUTABLE   - the bar executable
+
+set(automaton_bringup_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${automaton_bringup_DIR}/export_automaton_bringup.cmake")
+
+# These are IMPORTED targets created by automaton_bringupTargets.cmake
+
+

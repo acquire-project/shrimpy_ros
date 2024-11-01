@@ -6,10 +6,10 @@ from std_msgs.msg import String
 import serial
 
 
-class TriggerscopeNode(Node):
+class AsciiSerialTransportNode(Node):
 
     def __init__(self):
-        super().__init__('triggerscope')
+        super().__init__('asciiserialtransport')
         self.subscription = self.create_subscription(
             String,
             'to_serial',
@@ -24,7 +24,7 @@ class TriggerscopeNode(Node):
 
         # Initialize serial port
         self.serial_port = serial.Serial('/dev/ttyACM0', 115200, timeout=0.01)
-        self.get_logger().info('Triggerscope node initialized')
+        self.get_logger().info('AsciiSerialTransport node initialized')
 
     def listener_callback(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.data)
@@ -51,19 +51,19 @@ def main(args=None):
 
 
     try:
-        triggerscope = TriggerscopeNode()
-        rclpy.spin(triggerscope)
+        asciiserialtransport = AsciiSerialTransportNode()
+        rclpy.spin(asciiserialtransport)
     except ExternalShutdownException:
-        triggerscope.get_logger.error('External shutdown')
+        asciiserialtransport.get_logger.error('External shutdown')
     except KeyboardInterrupt:
-        triggerscope.get_logger.error('Keyboard interrupt')
+        asciiserialtransport.get_logger.error('Keyboard interrupt')
     except Exception as e:
-        triggerscope.get_logger.error('An error occurred: %s' % e)
+        asciiserialtransport.get_logger.error('An error occurred: %s' % e)
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
     finally:
-        triggerscope.destroy_node()
+        asciiserialtransport.destroy_node()
         
     rclpy.shutdown()
 if __name__ == '__main__':

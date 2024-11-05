@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'triggerscope_node = triggerscope_ros.triggerscope_node:main',
+            'triggerscope_server_node = triggerscope_ros.triggerscope_server_node:main',
             'ascii_serial_transport_node = triggerscope_ros.ascii_serial_transport_node:main',
         ],
     },

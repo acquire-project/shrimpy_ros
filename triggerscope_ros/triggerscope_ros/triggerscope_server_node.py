@@ -69,7 +69,8 @@ class TriggerscopeServerNode(Node):
         return response
 
     def send_command_read_reply(self, command:str) -> bool:
-        
+        self.serial_port.flushInput()
+        self.serial_port.flushOutput()
         self.serial_port.write((command + '\n').encode("ascii"))
         reply = self.serial_port.readline().strip().decode('ascii')
         success = (reply is not None) and (reply == '!' + command)

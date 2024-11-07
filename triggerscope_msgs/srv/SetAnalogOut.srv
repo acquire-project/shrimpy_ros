@@ -1,0 +1,4 @@
+uint8 channel
+float32 voltage
+---
+bool success

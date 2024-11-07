@@ -55,11 +55,10 @@ class TriggerscopeServerNode(Node):
         self.get_logger().info('TriggerscopeServer node initialized')
 
 
-    def set_digital_output_callback(self, request:srv.SetAnalogOut_Request, response:srv.SetAnalogOut_Response) -> srv.SetAnalogOut_Response:
+    def set_digital_output_callback(self, request:srv.SetDigitalOut_Request, response:srv.SetDigitalOut_Response) -> srv.SetDigitalOut_Response:
         self.get_logger().debug('Received request to set digital output %d to %d' % (request.channel, request.state))
         outstring = f"SDO{int(request.channel)}-{int(request.state)}"
-        self.serial_port.write((outstring + '\n').encode("ascii"))
-        
+                
         response.success = self.send_command_read_reply(outstring)
         if response.success:
             self.get_logger().debug('Successfully set digital output %d to %d' % (request.channel, request.state))

@@ -1,0 +1,12 @@
+uint8 ANALOG_SEQUENCE_COMMAND_STOP=0
+uint8 ANALOG_SEQUENCE_COMMAND_START=1
+uint8 ANALOG_SEQUENCE_COMMAND_CLEAR=2
+
+uint8 ANALOG_SEQUENCE_EDGE_FALLING=0
+uint8 ANALOG_SEQUENCE_EDGE_RISING=1
+
+uint8 channel
+uint8 command
+uint8 edge 0  # this is required for Start & Stop, but will be ignored for Clear 
+---
+bool success

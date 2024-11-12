@@ -49,6 +49,8 @@ class TriggerscopeServerNode(Node):
         self.srv['set_digital_out'] =  self.create_service(srv.SetDigitalOut, 'set_digital_out', self.set_digital_output_callback)
         self.srv['set_analog_range'] = self.create_service(srv.SetAnalogRange, 'set_analog_range', self.set_analog_range_callback)
         self.srv['set_analog_out'] =   self.create_service(srv.SetAnalogOut, 'set_analog_out', self.set_analog_output_callback)
+        self.srv['set_analog_sequence'] =   self.create_service(srv.SetAnalogSequence, 'set_analog_sequence', self.set_analog_sequence_callback)
+        self.srv['control_analog_sequence'] =   self.create_service(srv.ControlAnalogSequence, 'control_analog_sequence', self.control_analog_sequence_callback)
 
         # Initialize serial port
         self.serial_port = serial.Serial('/dev/ttyACM0', 115200, timeout=0.2)
@@ -56,25 +58,25 @@ class TriggerscopeServerNode(Node):
 
 
     def set_digital_output_callback(self, request:srv.SetDigitalOut_Request, response:srv.SetDigitalOut_Response) -> srv.SetDigitalOut_Response:
-        self.get_logger().debug('Received request to set digital output %d to %d' % (request.channel, request.state))
+        self.get_logger().info('Received request to set digital output %d to %d' % (request.channel, request.state))
         outstring = f"SDO{int(request.channel)}-{int(request.state)}"
                 
-        response.success = self.send_command_read_reply(outstring)
+        response.success = self.send_command_check_response(outstring)
         if response.success:
-            self.get_logger().debug('Successfully set digital output %d to %d' % (request.channel, request.state))
+            self.get_logger().info('Successfully set digital output %d to %d' % (request.channel, request.state))
         else:
             self.get_logger().error('Failed to set digital output %d to %d' % (request.channel, request.state))
         return response
 
     def set_analog_range_callback(self, request:srv.SetAnalogRange_Request, response:srv.SetAnalogRange_Response) -> srv.SetAnalogRange_Response:
-        self.get_logger().debug('Received request to set analog range %d to %d' % (request.channel, request.range))
+        self.get_logger().info('Received request to set analog range %d to %d' % (request.channel, request.range))
         outstring = f"SAR{int(request.channel)}-{int(request.range)}"
 
-        response.success = self.send_command_read_reply(outstring)
+        response.success = self.send_command_check_response(outstring)
         if response.success:
             # Store the analog range for future reference
             self.analog_ranges[request.channel] = self.ANALOG_VOLTAGE_RANGES[request.range]
-            self.get_logger().debug('Successfully set analog range %d to %d' % (request.channel, request.range))
+            self.get_logger().info('Successfully set analog range %d to %d' % (request.channel, request.range))
         else:
             self.get_logger().error('Failed to set analog range %d to %d' % (request.channel, request.range))
 
@@ -82,43 +84,91 @@ class TriggerscopeServerNode(Node):
 
     def set_analog_output_callback(self, request:srv.SetAnalogOut_Request, response:srv.SetAnalogOut_Response) -> srv.SetAnalogOut_Response:
 
-        self.get_logger().debug('Received request to set analog output %d to %d' % (request.channel, request.voltage))
+        self.get_logger().info('Received request to set analog output %d to %d' % (request.channel, request.voltage))
 
-        # Function to rescale a value from one range to another (linear interpolation)
-        rescale = lambda x, in_min, in_max, out_min, out_max: (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+        self.success = False
         try:
-            if(request.voltage < self.analog_ranges[request.channel][0] or request.voltage > self.analog_ranges[request.channel][1]):
-                self.get_logger().error('Voltage out of range for channel %d' % request.channel)
-                response.success = False
-                return response
-            
             # Convert the voltage to a digital value
-            digital = math.floor(rescale(request.voltage, self.analog_ranges[request.channel][0], self.analog_ranges[request.channel][1], self.DAC_MIN, self.DAC_MAX+1))
-            digital = min(digital, self.DAC_MAX) # Because the max value is NOT inclusive, this should only be necessary for the exact max value
+            digital = self.volts_to_digital(request.voltage, request.channel)
         except KeyError:
             self.get_logger().error('Analog voltage range unknown for channel %d' % request.channel)
             response.success = False
-            return response
-        
-        outstring = f"SAO{int(request.channel)}-{int(digital)}"
-
-        response.success = self.send_command_read_reply(outstring)
+        except ValueError:
+            self.get_logger().error('Voltage out of range for channel %d' % request.channel)
+        else:
+            # if none of the exceptions were raised, then we can proceed
+            outstring = f"SAO{int(request.channel)}-{int(digital)}"
+            response.success = self.send_command_check_response(outstring)
+            
         if response.success:
-            self.get_logger().debug('Successfully set analog output %d to %d' % (request.channel, request.voltage))
+            self.get_logger().info('Successfully set analog output %d to %d' % (request.channel, request.voltage))
         else:
             self.get_logger().error('Failed to set analog output %d to %d' % (request.channel, request.voltage))
 
         return response
     
-    def send_command_read_reply(self, command:str) -> bool:
+    def set_analog_sequence_callback(self, request:srv.SetAnalogSequence_Request, response:srv.SetAnalogSequence_Response) -> srv.SetAnalogSequence_Response:
+        self.get_logger().info('Received request to set analog sequence')
+        response.success = False
+        try:
+            outstring = f"PAO{request.channel}-0-{'-'.join([str(self.volts_to_digital(voltage, request.channel)) for voltage in request.voltages])}"
+        except KeyError:
+            self.get_logger().error('Analog voltage range unknown for channel %d' % request.channel)
+        except ValueError:
+            self.get_logger().error('Voltage out of range for channel %d' % request.channel)
+        else:
+            # if none of the exceptions were raised, then we can proceed
+            reply = self.send_command_read_reply(outstring)
+            response.success = reply.startswith(f"!PAO{request.channel}-0-{len(request.voltages)}")
+            
+        if response.success:
+            self.get_logger().info('Successfully set analog sequence')
+        else:
+            self.get_logger().error('Failed to set analog sequence')
+        return response
+
+    def control_analog_sequence_callback(self, request:srv.ControlAnalogSequence_Request, response:srv.ControlAnalogSequence_Response) -> srv.ControlAnalogSequence_Response:
+        self.get_logger().info('Received request to control analog sequence')
+        
+        if request.command == srv.ControlAnalogSequence_Request.ANALOG_SEQUENCE_COMMAND_CLEAR:
+            outstring = f"PAC{int(request.channel)}"
+        else:
+            outstring = f"PAS{int(request.channel)}-{int(request.command)}-{int(request.edge)}"
+
+        response.success = self.send_command_check_response(outstring)
+        if response.success:
+            self.get_logger().info('Successfully controlled analog sequence')
+        else:
+            self.get_logger().error('Failed to control analog sequence')
+        return response
+
+    def send_command_read_reply(self, command:str) -> str:
         self.serial_port.flushInput()
         self.serial_port.flushOutput()
+        
+        self.get_logger().debug('SerialTX: \'%s\'' % command)
         self.serial_port.write((command + '\n').encode("ascii"))
+        
         reply = self.serial_port.readline().strip().decode('ascii')
-        success = (reply is not None) and (reply == '!' + command)
-        if(not success):
-            self.get_logger().error('Triggerscope responded \'%s\'' % reply)
-        return success
+        self.get_logger().debug('SerialRX: \'%s\'' % reply)
+        return reply
+    
+    def send_command_check_response(self, command:str) -> bool:
+        reply = self.send_command_read_reply(command)
+        return reply == '!' + command
+    
+    def volts_to_digital(self, volts:float, channel:int) -> int:
+        """
+        Convert a voltage to a digital value for a given channel
+        """
+        
+        # the following checks if the voltage is within the range for the channel
+        # a side effect is that it will raise a KeyError if the channel is not in the analog_ranges dictionary
+        if(volts < self.analog_ranges[channel][0] or volts > self.analog_ranges[channel][1]):
+            raise ValueError('Voltage out of range for channel %d' % channel)
+        
+        min_voltage, max_voltage = self.analog_ranges[channel]
+        return min(math.floor((volts - min_voltage) / (max_voltage - min_voltage) * self.DAC_MAX+1), self.DAC_MAX)
     
 def main(args=None):
 

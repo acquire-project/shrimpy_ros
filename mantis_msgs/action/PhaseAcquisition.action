@@ -1,0 +1,4 @@
+uint16 n_images
+float64[] spacing_nm
+---
+---

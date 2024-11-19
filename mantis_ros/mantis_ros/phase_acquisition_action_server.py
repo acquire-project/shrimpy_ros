@@ -1,7 +1,7 @@
 import time
 
 from mantis_msgs.action import PhaseAcquisition
-from triggerscope_msgs.srv import SetAnalogSequence, SetAnalogOut
+from triggerscope_msgs.srv import SetAnalogSequence, SetAnalogOut, ControlAnalogSequence, ControlAnalogSequence_Request
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -15,7 +15,7 @@ class PhaseAcquisitionActionServer(Node):
         super().__init__('phase_acquisition_action_server')
 
         self.volts_per_nm = 0.1
-
+        self.use_analog_sequence = True
         self.action_server = ActionServer(
             self,
             PhaseAcquisition,
@@ -27,6 +27,7 @@ class PhaseAcquisitionActionServer(Node):
 
         self.stage_sequence_client = self.create_client(SetAnalogSequence, 'set_analog_sequence')
         self.stage_move_client = self.create_client(SetAnalogOut, 'set_analog_out')
+        self.stage_sequence_control_client= self.create_client(ControlAnalogSequence, 'control_analog_sequence')
         self.get_logger().info('Phase Acquisition Action Server has been started')
         
     def destroy(self):
@@ -56,29 +57,71 @@ class PhaseAcquisitionActionServer(Node):
             goal_handle.abort()
             return PhaseAcquisition.Result()
         
-        spacing = goal_handle.request.spacing_nm
-
-        # Set the analog sequence
-        request = SetAnalogOut.Request()        
-        sequence = [float(i) for i in range(0, 11)]
-        
-        # Append the seeds for the PhaseAcquisition sequence
-        feedback_msg = PhaseAcquisition.Feedback()
-
-        for i in sequence:
-            request.channel = 3
-            request.voltage = i
-            #await result = self.stage_move_client.call_async(request)
-            result = self.stage_move_client.call(request)
+        if self.use_analog_sequence:
+            
+            # Clear the analog sequence
+            control_request = ControlAnalogSequence.Request()
+            control_request.channel = 3
+            control_request.command = ControlAnalogSequence_Request.ANALOG_SEQUENCE_COMMAND_CLEAR
+            result = self.stage_sequence_control_client.call(control_request)
             if result.success:
-                self.get_logger().info('Successfully set analog output to %d' % i)
-            else:
-                self.get_logger().error('Failed to set analog output to %d' % i)
+                self.get_logger().info('Successfully cleared analog sequence')
+            else: 
+                self.get_logger().error('Failed to clear analog sequence')
                 goal_handle.abort()
                 return PhaseAcquisition.Result()
-            #feedback_msg.current_position_nm = i * self.volts_per_nm
-            #goal_handle.publish_feedback(feedback_msg)
-            time.sleep(0.2)
+            
+            
+            # Set the analog sequence
+            request = SetAnalogSequence.Request()
+            request.channel = 3
+            request.voltages = [float(i) for i in range(0, 11)] 
+            
+            result = self.stage_sequence_client.call(request)
+            if result.success:
+                self.get_logger().info('Successfully set analog sequence')
+            else:
+                self.get_logger().error('Failed to set analog sequence')
+                goal_handle.abort()
+                return PhaseAcquisition.Result()
+            
+            
+            # Start the analog sequence
+            control_request.command = ControlAnalogSequence_Request.ANALOG_SEQUENCE_COMMAND_START
+            result = self.stage_sequence_control_client.call(control_request)
+            
+            if result.success:
+                self.get_logger().info('Successfully started analog sequence')
+            else:
+                self.get_logger().error('Failed to start analog sequence')
+                goal_handle.abort()
+                return PhaseAcquisition.Result()
+            
+            
+            
+        else:
+            # Set the analog sequence
+            request = SetAnalogOut.Request()        
+            sequence = [float(i) for i in range(0, 11)]
+            
+            # Append the seeds for the PhaseAcquisition sequence
+            feedback_msg = PhaseAcquisition.Feedback()
+
+            for i in sequence:
+                request.channel = 3
+                request.voltage = i
+                #await result = self.stage_move_client.call_async(request)
+                result = self.stage_move_client.call(request)
+                if result.success:
+                    self.get_logger().info('Successfully set analog output to %d' % i)
+                else:
+                    self.get_logger().error('Failed to set analog output to %d' % i)
+                    goal_handle.abort()
+                    return PhaseAcquisition.Result()
+                #feedback_msg.current_position_nm = i * self.volts_per_nm
+                #goal_handle.publish_feedback(feedback_msg)
+                time.sleep(0.2)
+
 
         goal_handle.succeed()
 

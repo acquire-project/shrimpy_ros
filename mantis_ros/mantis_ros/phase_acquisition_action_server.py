@@ -1,7 +1,7 @@
 import time
 
 from mantis_msgs.action import PhaseAcquisition
-from triggerscope_msgs.srv import SetAnalogSequence
+from triggerscope_msgs.srv import SetAnalogSequence, SetAnalogOut
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -25,7 +25,8 @@ class PhaseAcquisitionActionServer(Node):
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback)
 
-        self.stage_client = self.create_client(SetAnalogSequence, 'set_analog_sequence')
+        self.stage_sequence_client = self.create_client(SetAnalogSequence, 'set_analog_sequence')
+        self.stage_move_client = self.create_client(SetAnalogOut, 'set_analog_out')
         self.get_logger().info('Phase Acquisition Action Server has been started')
         
     def destroy(self):
@@ -49,8 +50,8 @@ class PhaseAcquisitionActionServer(Node):
         self.get_logger().info('Executing goal...')
 
 
-        self.stage_client.wait_for_service(timeout_sec=1.0)
-        if not self.stage_client.service_is_ready():
+        self.stage_move_client.wait_for_service(timeout_sec=1.0)
+        if not self.stage_move_client.service_is_ready():
             self.get_logger().error('Service not available')
             goal_handle.abort()
             return PhaseAcquisition.Result()
@@ -58,12 +59,26 @@ class PhaseAcquisitionActionServer(Node):
         spacing = goal_handle.request.spacing_nm
 
         # Set the analog sequence
-        request = SetAnalogSequence.Request()        
-        #request.sequence = [i * self.volts_per_nm for i in range(0, 1000, spacing)]
+        request = SetAnalogOut.Request()        
+        sequence = [float(i) for i in range(0, 11)]
         
         # Append the seeds for the PhaseAcquisition sequence
         feedback_msg = PhaseAcquisition.Feedback()
 
+        for i in sequence:
+            request.channel = 3
+            request.voltage = i
+            #await result = self.stage_move_client.call_async(request)
+            result = self.stage_move_client.call(request)
+            if result.success:
+                self.get_logger().info('Successfully set analog output to %d' % i)
+            else:
+                self.get_logger().error('Failed to set analog output to %d' % i)
+                goal_handle.abort()
+                return PhaseAcquisition.Result()
+            #feedback_msg.current_position_nm = i * self.volts_per_nm
+            #goal_handle.publish_feedback(feedback_msg)
+            time.sleep(0.2)
 
         goal_handle.succeed()
 

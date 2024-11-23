@@ -67,7 +67,7 @@ class PhaseAcquisitionActionServer(Node):
             return PhaseAcquisition.Result()
         
         # Turn on the light source
-        light_request = SetDigitalOut.Request(channel=0, state=1)
+        light_request = SetDigitalOut.Request(channel_bank=0, state=[1,0,0,0,0,0,0,0])
         light_request = self.light_source_client.call(request)
         if result.success:
             self.get_logger().info('Successfully turned on light source')
@@ -141,7 +141,7 @@ class PhaseAcquisitionActionServer(Node):
 
 
         # Turn on the off source
-        light_request.state = 0
+        light_request.state[0] = 0
         light_request = self.light_source_client.call(request)
         if result.success:
             self.get_logger().info('Successfully turned on light source')

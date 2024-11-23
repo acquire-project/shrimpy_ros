@@ -1,4 +1,4 @@
-uint8 channel
-bool state
+bool channel_bank
+bool[8] state
 ---
 bool success

@@ -2,6 +2,7 @@ import time
 
 from mantis_msgs.action import PhaseAcquisition
 from triggerscope_msgs.srv import SetAnalogSequence, SetAnalogOut, ControlAnalogSequence, ControlAnalogSequence_Request
+from triggerscope_msgs.srv import SetDigitalOut
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -28,6 +29,8 @@ class PhaseAcquisitionActionServer(Node):
         self.stage_sequence_client = self.create_client(SetAnalogSequence, 'set_analog_sequence')
         self.stage_move_client = self.create_client(SetAnalogOut, 'set_analog_out')
         self.stage_sequence_control_client= self.create_client(ControlAnalogSequence, 'control_analog_sequence')
+        self.light_source_client= self.create_client(SetDigitalOut, 'set_digit_out')
+
         self.get_logger().info('Phase Acquisition Action Server has been started')
         
     def destroy(self):
@@ -52,8 +55,24 @@ class PhaseAcquisitionActionServer(Node):
 
 
         self.stage_move_client.wait_for_service(timeout_sec=1.0)
-        if not self.stage_move_client.service_is_ready():
-            self.get_logger().error('Service not available')
+        self.stage_sequence_client.wait_for_service(timeout_sec=1.0)
+        self.stage_sequence_control_client.wait_for_service(timeout_sec=1.0)
+        self.light_source_client.wait_for_service(timeout_sec=1.0)
+        if not (self.stage_move_client.service_is_ready() 
+                and self.stage_sequence_client.service_is_ready()
+                and self.stage_sequence_control_client.service_is_ready() 
+                and self.light_source_client.service_is_ready()):
+            self.get_logger().error('Triggerscope services not available')
+            goal_handle.abort()
+            return PhaseAcquisition.Result()
+        
+        # Turn on the light source
+        light_request = SetDigitalOut.Request(channel=0, state=1)
+        light_request = self.light_source_client.call(request)
+        if result.success:
+            self.get_logger().info('Successfully turned on light source')
+        else:
+            self.get_logger().error('Failed to turn on light source')
             goal_handle.abort()
             return PhaseAcquisition.Result()
         
@@ -97,8 +116,6 @@ class PhaseAcquisitionActionServer(Node):
                 goal_handle.abort()
                 return PhaseAcquisition.Result()
             
-            
-            
         else:
             # Set the analog sequence
             request = SetAnalogOut.Request()        
@@ -123,6 +140,17 @@ class PhaseAcquisitionActionServer(Node):
                 time.sleep(0.2)
 
 
+        # Turn on the off source
+        light_request.state = 0
+        light_request = self.light_source_client.call(request)
+        if result.success:
+            self.get_logger().info('Successfully turned on light source')
+        else:
+            self.get_logger().error('Failed to turn on light source')
+            goal_handle.abort()
+            return PhaseAcquisition.Result()
+        
+        self.get_logger().info('Successfully completed goal')
         goal_handle.succeed()
 
         # Populate result message

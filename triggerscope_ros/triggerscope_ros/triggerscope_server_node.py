@@ -58,14 +58,21 @@ class TriggerscopeServerNode(Node):
 
 
     def set_digital_output_callback(self, request:srv.SetDigitalOut_Request, response:srv.SetDigitalOut_Response) -> srv.SetDigitalOut_Response:
-        self.get_logger().info('Received request to set digital output %d to %d' % (request.channel, request.state))
-        outstring = f"SDO{int(request.channel)}-{int(request.state)}"
-                
+
+        
+        self.get_logger().info(f'Received request to set digital output {request.channel_bank} to {request.state}')
+        
+        state_bits = 0
+        for i in range(8):
+             state_bits += request.state[i] << i
+
+        outstring = f"SDO{int(request.channel_bank)}-{state_bits}"
+        
         response.success = self.send_command_check_response(outstring)
         if response.success:
-            self.get_logger().info('Successfully set digital output %d to %d' % (request.channel, request.state))
+            self.get_logger().info(f'Successfully set digital output {request.channel_bank} to {request.state}')
         else:
-            self.get_logger().error('Failed to set digital output %d to %d' % (request.channel, request.state))
+            self.get_logger().error(f'Failed to set digital output {request.channel_bank} to {request.state}')
         return response
 
     def set_analog_range_callback(self, request:srv.SetAnalogRange_Request, response:srv.SetAnalogRange_Response) -> srv.SetAnalogRange_Response:

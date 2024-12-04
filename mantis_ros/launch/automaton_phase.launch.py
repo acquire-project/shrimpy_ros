@@ -47,12 +47,13 @@ example_parameters = {
         # 'offset_y': 0,
         # 'binning_x': 1,
         # 'binning_y': 1,
-        # 'connect_while_subscribed': True,
+        'connect_while_subscribed': True,
         # Timing configuration
         'acquisition_mode': 'MultiFrame',
+        'frame_count': 11,
         'exposure_time': 500,
         'frame_rate_auto': 'On',
-        'frame_rate': 1.0,
+        'frame_rate': 10.0,
         'frame_rate_enable': True,
         'trigger_mode': 'Off',
         'line2_selector': 'Line2',  # Select GPIO line
@@ -84,7 +85,8 @@ def launch_setup(context, *args, **kwargs):
     if camera_type not in example_parameters:
         raise Exception('no example parameters available for type ' + camera_type)
 
-    node = Node(
+    
+    camera_node = Node(
         package='spinnaker_camera_driver',
         executable='camera_driver_node',
         output='screen',
@@ -102,8 +104,32 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    return [node]
-
+    triggerscope_node = Node(
+        package='triggerscope_ros',
+        executable='triggerscope_server_node',
+        output='screen',
+        name='triggerscope'
+    )
+    
+    phase_acquisition_server = Node(
+        package='mantis_ros',
+        executable='phase_acquisition_action_server',
+        output='screen',
+        name='phase_acquisition'
+    )
+    
+    phase_acquisition_server = Node(
+        package='mantis_ros',
+        executable='phase_acquisition_action_server',
+        output='screen',
+        name='phase_acquisition'
+    )
+    nodes = [
+        camera_node,
+        triggerscope_node,
+        phase_acquisition_server,
+    ]
+    return nodes
 
 def generate_launch_description():
     """Create composable node by calling opaque function."""
@@ -111,7 +137,7 @@ def generate_launch_description():
         [
             LaunchArg(
                 'camera_name',
-                default_value=['flir_camera'],
+                default_value=['blackfly'],
                 description='camera name (ros node name)',
             ),
             LaunchArg(

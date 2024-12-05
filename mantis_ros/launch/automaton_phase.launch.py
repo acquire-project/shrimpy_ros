@@ -118,16 +118,18 @@ def launch_setup(context, *args, **kwargs):
         name='phase_acquisition'
     )
     
-    phase_acquisition_server = Node(
-        package='mantis_ros',
-        executable='phase_acquisition_action_server',
+    foxglove_bridge = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
         output='screen',
-        name='phase_acquisition'
+        name='foxglove_bridge'
     )
+
     nodes = [
         camera_node,
         triggerscope_node,
         phase_acquisition_server,
+        foxglove_bridge,
     ]
     return nodes
 

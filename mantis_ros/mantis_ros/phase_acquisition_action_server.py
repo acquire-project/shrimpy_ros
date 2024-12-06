@@ -2,12 +2,17 @@ import time
 
 from mantis_msgs.action import PhaseAcquisition
 from triggerscope_msgs.srv import SetAnalogSequence, SetAnalogOut, ControlAnalogSequence, ControlAnalogSequence_Request
-from triggerscope_msgs.srv import SetDigitalOut
+from triggerscope_msgs.srv import SetDigitalOut, SetAnalogRange, SetAnalogRange_Request
+
+from flir_camera_msgs.action import AcquireMultiFrame
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from rclpy.action import ActionClient
+from action_msgs.msg import GoalStatus
+
 
 
 class PhaseAcquisitionActionServer(Node):
@@ -30,10 +35,12 @@ class PhaseAcquisitionActionServer(Node):
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback)
 
+        self.analog_range_client = self.create_client(SetAnalogRange, 'set_analog_range')
         self.stage_sequence_client = self.create_client(SetAnalogSequence, 'set_analog_sequence')
         self.stage_move_client = self.create_client(SetAnalogOut, 'set_analog_out')
         self.stage_sequence_control_client= self.create_client(ControlAnalogSequence, 'control_analog_sequence')
         self.light_source_client= self.create_client(SetDigitalOut, 'set_digital_out')
+        self.camera_action = ActionClient(self, AcquireMultiFrame, 'acquire_multi_frame')
 
         self.get_logger().info('Phase Acquisition Action Server has been started')
         
@@ -62,8 +69,21 @@ class PhaseAcquisitionActionServer(Node):
         self.stage_sequence_client.wait_for_service(timeout_sec=1.0)
         self.stage_sequence_control_client.wait_for_service(timeout_sec=1.0)
         self.light_source_client.wait_for_service(timeout_sec=1.0)
+        self.camera_action.wait_for_server(timeout_sec=1.0)
+        
         if not (self.stage_move_client.service_is_ready()):
             self.get_logger().error('Triggerscope services not available')
+            goal_handle.abort()
+            return PhaseAcquisition.Result()
+        
+        set_range_request = SetAnalogRange.Request()
+        set_range_request.channel = self.stage_analog_channel
+        set_range_request.range = SetAnalogRange_Request.VOLTAGE_RANGE_0_TO_10
+        set_range_result = self.analog_range_client.call(set_range_request)
+        if set_range_result.success:
+            self.get_logger().info('Successfully set analog range')
+        else: 
+            self.get_logger().error('Failed to set analog range')
             goal_handle.abort()
             return PhaseAcquisition.Result()
         
@@ -79,7 +99,7 @@ class PhaseAcquisitionActionServer(Node):
             return PhaseAcquisition.Result()
         
         if self.use_analog_sequence:
-            
+                        
             # Clear the analog sequence
             control_request = ControlAnalogSequence.Request()
             control_request.channel = self.stage_analog_channel
@@ -117,6 +137,20 @@ class PhaseAcquisitionActionServer(Node):
                 self.get_logger().error('Failed to start analog sequence')
                 goal_handle.abort()
                 return PhaseAcquisition.Result()
+            
+            self.camera_action.wait_for_server(timeout_sec=1.0)
+
+            goal_msg = AcquireMultiFrame.Goal()
+            goal_msg.num_frames = len(request.voltages)
+            
+            camera_response = self.camera_action.send_goal(goal_msg)
+            if camera_response.status == GoalStatus.STATUS_SUCCEEDED:
+                self.get_logger().info('Successfully ran camera sequence')
+            else:
+                self.get_logger().error('Failed to run camera sequence')
+                goal_handle.abort()
+                return PhaseAcquisition.Result()
+            
             
         else:
             # Set the analog sequence
@@ -159,6 +193,7 @@ class PhaseAcquisitionActionServer(Node):
         result = PhaseAcquisition.Result()
 
         return result
+    
 
 
 def main(args=None):

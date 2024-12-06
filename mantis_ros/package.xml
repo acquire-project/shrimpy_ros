@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>mantis_msgs</depend>
   <depend>triggerscope_msgs</depend>
+  <depend>flir_camera_msgs</depend>
   
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

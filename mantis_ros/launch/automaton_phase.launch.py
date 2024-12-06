@@ -47,10 +47,10 @@ example_parameters = {
         # 'offset_y': 0,
         # 'binning_x': 1,
         # 'binning_y': 1,
-        'connect_while_subscribed': True,
+        #'connect_while_subscribed': True,
         # Timing configuration
-        'acquisition_mode': 'MultiFrame',
-        'frame_count': 11,
+        #'acquisition_mode': 'MultiFrame',
+        #'frame_count': 11,
         'exposure_time': 500,
         'frame_rate_auto': 'On',
         'frame_rate': 10.0,
@@ -139,7 +139,7 @@ def generate_launch_description():
         [
             LaunchArg(
                 'camera_name',
-                default_value=['blackfly'],
+                default_value=['flir_camera'],
                 description='camera name (ros node name)',
             ),
             LaunchArg(

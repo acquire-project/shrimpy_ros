@@ -172,7 +172,9 @@ class TriggerscopeServerNode(Node):
         # the following checks if the voltage is within the range for the channel
         # a side effect is that it will raise a KeyError if the channel is not in the analog_ranges dictionary
         if(volts < self.analog_ranges[channel][0] or volts > self.analog_ranges[channel][1]):
-            raise ValueError('Voltage out of range for channel %d' % channel)
+            error_msg = f'Voltage {volts} out of range for channel {channel}'
+            self.get_logger().error(error_msg)
+            raise ValueError(error_msg)
         
         min_voltage, max_voltage = self.analog_ranges[channel]
         return min(math.floor((volts - min_voltage) / (max_voltage - min_voltage) * self.DAC_MAX+1), self.DAC_MAX)

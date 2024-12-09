@@ -176,13 +176,24 @@ class PhaseAcquisitionActionServer(Node):
                 time.sleep(0.2)
 
 
+        # Stop the analog sequence
+        control_request.command = ControlAnalogSequence_Request.ANALOG_SEQUENCE_COMMAND_STOP
+        control_result = self.stage_sequence_control_client.call(control_request)
+        
+        if control_result.success:
+            self.get_logger().info('Successfully stopped analog sequence')
+        else:
+            self.get_logger().error('Failed to stop analog sequence')
+            goal_handle.abort()
+            return PhaseAcquisition.Result()
+        
         # Turn on the off source
         light_request.state[self.light_source_digital_channel] = False
         light_result = self.light_source_client.call(light_request)
         if light_result.success:
-            self.get_logger().info('Successfully turned on light source')
+            self.get_logger().info('Successfully turned off light source')
         else:
-            self.get_logger().error('Failed to turn on light source')
+            self.get_logger().error('Failed to turn off light source')
             goal_handle.abort()
             return PhaseAcquisition.Result()
         

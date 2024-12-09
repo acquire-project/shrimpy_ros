@@ -20,7 +20,7 @@ class PhaseAcquisitionActionServer(Node):
     def __init__(self):
         super().__init__('phase_acquisition_action_server')
 
-        self.volts_per_um = 3.0
+        self.volts_per_um = 30.0 ** -1
         self.use_analog_sequence = True
         
         self.stage_analog_channel = self.declare_parameter("stage_analog_channel", 3).get_parameter_value().integer_value
@@ -116,8 +116,9 @@ class PhaseAcquisitionActionServer(Node):
             # Set the analog sequence
             request = SetAnalogSequence.Request()
             request.channel = self.stage_analog_channel
-            request.voltages = [float(i) for i in range(0, 11)] 
-            
+            step_size = (goal_handle.request.end_pos_um-goal_handle.request.start_pos_um)/(goal_handle.request.num_frames-1)
+            request.voltages = [float(goal_handle.request.start_pos_um + i*step_size)*self.volts_per_um for i in range(0, goal_handle.request.num_frames)]
+                        
             result = self.stage_sequence_client.call(request)
             if result.success:
                 self.get_logger().info('Successfully set analog sequence')
@@ -150,7 +151,6 @@ class PhaseAcquisitionActionServer(Node):
                 self.get_logger().error('Failed to run camera sequence')
                 goal_handle.abort()
                 return PhaseAcquisition.Result()
-            
             
         else:
             # Set the analog sequence

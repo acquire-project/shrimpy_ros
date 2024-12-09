@@ -1,4 +1,5 @@
-uint16 n_images
-float64 spacing_nm
+uint16 num_frames
+float32 start_pos_um
+float32 end_pos_um
 ---
 ---

@@ -3,7 +3,7 @@
 <package format="3">
   <name>mantis_msgs</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Action messages for controlling the Mantis microscope</description>
   <maintainer email="jeskesen@chanzuckerberg.com">jge</maintainer>
   <license>Apache-2.0</license>
 

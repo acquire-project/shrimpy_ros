@@ -3,7 +3,7 @@
 <package format="3">
   <name>mantis_ros</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Nodes for controlling the mantis microscope</description>
   <maintainer email="jeskesen@chanzuckerberg.com">jge</maintainer>
   <license>Apache-2.0</license>
 

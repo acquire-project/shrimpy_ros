@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='jge',
     maintainer_email='jeskesen@chanzuckerberg.com',
-    description='TODO: Package description',
+    description='Nodes for controlling the mantis microscope',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={

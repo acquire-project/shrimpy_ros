@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='Justin Eskesen',
     maintainer_email='jeskesen@chanzuckerberg.com',
-    description='TODO: Package description',
+    description='Nodes for interacting with the Triggerscope over a serial port',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={

@@ -4,7 +4,7 @@
   <name>mantis_msgs</name>
   <version>0.0.0</version>
   <description>Action messages for controlling the Mantis microscope</description>
-  <maintainer email="jeskesen@chanzuckerberg.com">jge</maintainer>
+  <maintainer email="jeskesen@chanzuckerberg.com">Justin Eskesen</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

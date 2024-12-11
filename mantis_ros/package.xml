@@ -4,7 +4,7 @@
   <name>mantis_ros</name>
   <version>0.0.0</version>
   <description>Nodes for controlling the mantis microscope</description>
-  <maintainer email="jeskesen@chanzuckerberg.com">jge</maintainer>
+  <maintainer email="jeskesen@chanzuckerberg.com">Justin Eskesen</maintainer>
   <license>Apache-2.0</license>
 
   <depend>rclpy</depend>

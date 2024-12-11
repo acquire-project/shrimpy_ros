@@ -17,7 +17,7 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='jge',
+    maintainer='Justin Eskesen',
     maintainer_email='jeskesen@chanzuckerberg.com',
     description='Nodes for controlling the mantis microscope',
     license='Apache-2.0',

@@ -58,14 +58,21 @@ class TriggerscopeServerNode(Node):
 
 
     def set_digital_output_callback(self, request:srv.SetDigitalOut_Request, response:srv.SetDigitalOut_Response) -> srv.SetDigitalOut_Response:
-        self.get_logger().info('Received request to set digital output %d to %d' % (request.channel, request.state))
-        outstring = f"SDO{int(request.channel)}-{int(request.state)}"
-                
+
+        
+        self.get_logger().info(f'Received request to set digital output {request.channel_bank} to {request.state}')
+        
+        state_bits = 0
+        for i in range(8):
+             state_bits += request.state[i] << i
+
+        outstring = f"SDO{int(request.channel_bank)}-{state_bits}"
+        
         response.success = self.send_command_check_response(outstring)
         if response.success:
-            self.get_logger().info('Successfully set digital output %d to %d' % (request.channel, request.state))
+            self.get_logger().info(f'Successfully set digital output {request.channel_bank} to {request.state}')
         else:
-            self.get_logger().error('Failed to set digital output %d to %d' % (request.channel, request.state))
+            self.get_logger().error(f'Failed to set digital output {request.channel_bank} to {request.state}')
         return response
 
     def set_analog_range_callback(self, request:srv.SetAnalogRange_Request, response:srv.SetAnalogRange_Response) -> srv.SetAnalogRange_Response:
@@ -93,8 +100,8 @@ class TriggerscopeServerNode(Node):
         except KeyError:
             self.get_logger().error('Analog voltage range unknown for channel %d' % request.channel)
             response.success = False
-        except ValueError:
-            self.get_logger().error('Voltage out of range for channel %d' % request.channel)
+        except ValueError as e:
+            self.get_logger().error(e)
         else:
             # if none of the exceptions were raised, then we can proceed
             outstring = f"SAO{int(request.channel)}-{int(digital)}"
@@ -114,8 +121,8 @@ class TriggerscopeServerNode(Node):
             outstring = f"PAO{request.channel}-0-{'-'.join([str(self.volts_to_digital(voltage, request.channel)) for voltage in request.voltages])}"
         except KeyError:
             self.get_logger().error('Analog voltage range unknown for channel %d' % request.channel)
-        except ValueError:
-            self.get_logger().error('Voltage out of range for channel %d' % request.channel)
+        except ValueError as e:
+            self.get_logger().error(e)
         else:
             # if none of the exceptions were raised, then we can proceed
             reply = self.send_command_read_reply(outstring)
@@ -165,7 +172,7 @@ class TriggerscopeServerNode(Node):
         # the following checks if the voltage is within the range for the channel
         # a side effect is that it will raise a KeyError if the channel is not in the analog_ranges dictionary
         if(volts < self.analog_ranges[channel][0] or volts > self.analog_ranges[channel][1]):
-            raise ValueError('Voltage out of range for channel %d' % channel)
+            raise ValueError(f'Voltage {volts} out of range for channel {channel}')
         
         min_voltage, max_voltage = self.analog_ranges[channel]
         return min(math.floor((volts - min_voltage) / (max_voltage - min_voltage) * self.DAC_MAX+1), self.DAC_MAX)

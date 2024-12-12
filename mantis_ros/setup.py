@@ -1,6 +1,8 @@
 from setuptools import find_packages, setup
+from glob import glob
+import os
 
-package_name = 'triggerscope_ros'
+package_name = 'mantis_ros'
 
 setup(
     name=package_name,
@@ -10,18 +12,19 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
+        (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*.yaml'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Justin Eskesen',
     maintainer_email='jeskesen@chanzuckerberg.com',
-    description='Nodes for interacting with the Triggerscope over a serial port',
+    description='Nodes for controlling the mantis microscope',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'triggerscope_server_node = triggerscope_ros.triggerscope_server_node:main',
-            'ascii_serial_transport_node = triggerscope_ros.ascii_serial_transport_node:main',
+            'phase_acquisition_action_server = mantis_ros.phase_acquisition_action_server:main'
         ],
     },
 )

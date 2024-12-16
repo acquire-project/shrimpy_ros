@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'phase_acquisition_action_server = waveorder_ros.phase_acquisition_action_server:main'
+            'phase_calibration_node = waveorder_ros.phase_calibration_node:main'
         ],
     },
 )

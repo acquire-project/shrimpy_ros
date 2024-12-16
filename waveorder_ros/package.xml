@@ -8,9 +8,7 @@
   <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
-  <depend>waveorder_msgs</depend>
-  <depend>triggerscope_msgs</depend>
-  <depend>flir_camera_msgs</depend>
+  <depend>sensor_msgs</depend>
   
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

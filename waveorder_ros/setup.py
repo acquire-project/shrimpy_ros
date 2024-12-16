@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'phase_calibration_node = waveorder_ros.phase_calibration_node:main'
+            'phase_reconstruction_node = waveorder_ros.phase_reconstruction_node:main'
         ],
     },
 )

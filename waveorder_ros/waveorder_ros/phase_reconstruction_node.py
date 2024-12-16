@@ -5,13 +5,13 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 
 
-class PhaseCalibrationNode(Node):
+class PhaseReconstructionNode(Node):
 
     def __init__(self):
-        super().__init__('phase_calibration_node')
+        super().__init__('phase_reconstruction_node')
         self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 10)
         self.image_queue = []
-        self.get_logger().info("Phase calibration node started")
+        self.get_logger().info("Phase reconstruction node started")
         
     def image_callback(self, msg: Image):
         self.image_queue.append(msg)
@@ -20,7 +20,7 @@ class PhaseCalibrationNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = PhaseCalibrationNode()
+    node = PhaseReconstructionNode()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

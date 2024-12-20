@@ -4,17 +4,17 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import Image
 #import numpy as np
-from torch import Tensor
+#from torch import Tensor
+import torch
 from waveorder.models import phase_thick_3d
 
 class PhaseReconstructionNode(Node):
 
     def __init__(self):
         super().__init__('phase_reconstruction_node')
-        self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 11)
         
         self.get_logger().info("Generating phase calibration")
-                # calculate the phase calibration
+        # calculate the phase calibration
         self.simulation_arguments = {
             "zyx_shape": (11, 2448, 2048), # update to match data shape, probably (11, 2448, 2048)
             "yx_pixel_size": 0.345, # in um, camera has 3.45 um pixels and we use 10x magnification
@@ -28,18 +28,26 @@ class PhaseReconstructionNode(Node):
             "numerical_aperture_illumination": 0.4, # this is a rough estimate
             "numerical_aperture_detection": 0.45, # the objective has 0.45 NA detection
         }
-        zyx=self.simulation_arguments["zyx_shape"]
-        self.image_z_stack = Tensor.new_empty(zyx)
-        self.generate_phase_calibration()
-        self.get_logger().info("Phase reconstruction node started")
         
+        zyx=self.simulation_arguments["zyx_shape"]
+        self.image_z_stack = torch.empty(zyx)
+        self.generate_phase_calibration()
+
+        self.image_count = 0
+        self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 11)
+        self.get_logger().info("Phase reconstruction node started")
+
     def image_callback(self, msg: Image):
 
-        self.image_z_stack[self.image_count] = msg.data
+        # Copy image data into tensor
+        image_data = torch.tensor(msg.data, dtype=torch.uint8).reshape(2448, 2048)
+        self.image_z_stack[self.image_count,:,:] = torch.tensor(image_data)
+        
+        #self.image_z_stack[self.image_count] = msg.data
         self.get_logger().info(f"Received image, I now have {self.image_count} images")
         self.get_logger().info(f"{type(msg.data)}")
 
-        if len(self.image_queue) == self.simulation_arguments["zyx_shape"][0]:
+        if self.image_count == self.simulation_arguments["zyx_shape"][0]-1:
             self.get_logger().info("Performing phase reconstruction")
             self.perform_phase_reconstruction()
             self.image_count = 0
@@ -47,7 +55,6 @@ class PhaseReconstructionNode(Node):
             self.image_count += 1
 
     def generate_phase_calibration(self):
-        
 
         # Calculate transfer function
         (
@@ -61,9 +68,7 @@ class PhaseReconstructionNode(Node):
 
     
     def perform_phase_reconstruction(self):
-        # concatenate images as a 3d array
-        self.get_logger().info(f"Image volume generated with shape {self.real_potential_transfer_function.shape}")
-        
+                
         # Reconstruct
         zyx_recon = phase_thick_3d.apply_inverse_transfer_function(
             self.image_z_stack,
@@ -74,7 +79,8 @@ class PhaseReconstructionNode(Node):
             self.transfer_function_arguments["wavelength_illumination"]
         )
         
-        
+        self.get_logger().info(f"Reconstructed image w/ with shape {zyx_recon.shape}")
+
 def main(args=None):
     rclpy.init(args=args)
 

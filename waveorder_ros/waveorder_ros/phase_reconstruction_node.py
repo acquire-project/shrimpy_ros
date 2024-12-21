@@ -3,8 +3,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
-#import numpy as np
-#from torch import Tensor
+import numpy as np
 import torch
 from waveorder.models import phase_thick_3d
 
@@ -13,17 +12,18 @@ class PhaseReconstructionNode(Node):
     def __init__(self):
         super().__init__('phase_reconstruction_node')
         
-        
         self.setup_parameters()
         
         self.get_logger().info("Generating phase calibration")
         # calculate the phase calibration
         
-        self.image_z_stack = torch.empty(self.get_parameter("zyx_shape").value, dtype=torch.uint8)
+        self.image_z_stack = np.zeros( (self.get_parameter("zyx_shape").value[0],
+                                        self.get_parameter("zyx_shape").value[1] * self.get_parameter("zyx_shape").value[2]),
+                                        dtype=np.uint8)
         self.generate_phase_calibration()
 
         self.image_count = 0
-        self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 11)
+        self.sub = self.create_subscription(Image, 'flir_camera/image_raw', self.image_callback, 11)
         self.get_logger().info("Phase reconstruction node started")
 
     def setup_parameters(self):
@@ -43,8 +43,7 @@ class PhaseReconstructionNode(Node):
     def image_callback(self, msg: Image):
 
         # Copy image data into tensor
-        image_data = torch.tensor(msg.data, dtype=torch.uint8).reshape(2448, 2048)
-        self.image_z_stack[self.image_count,:,:] = torch.tensor(image_data)
+        self.image_z_stack[self.image_count,:] = msg.data
         
         #self.image_z_stack[self.image_count] = msg.data
         self.get_logger().info(f"Received image, I now have {self.image_count} images")
@@ -79,9 +78,11 @@ class PhaseReconstructionNode(Node):
     def perform_phase_reconstruction(self):
         self.get_logger().info("Performing phase reconstruction")
 
+        tensor_z_stack = torch.tensor(self.image_z_stack.reshape(self.get_parameter("zyx_shape").value), dtype=torch.float32)
+        
         # Reconstruct
         zyx_recon = phase_thick_3d.apply_inverse_transfer_function(
-            self.image_z_stack,
+            tensor_z_stack,
             self.real_potential_transfer_function,
             self.imag_potential_transfer_function,
             self.get_parameter("z_padding").value,

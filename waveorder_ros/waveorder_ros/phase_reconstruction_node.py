@@ -3,6 +3,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import numpy as np
 import torch
 from waveorder.models import phase_thick_3d
@@ -23,7 +24,22 @@ class PhaseReconstructionNode(Node):
         self.generate_phase_calibration()
 
         self.image_count = 0
-        self.sub = self.create_subscription(Image, 'flir_camera/image_raw', self.image_callback, 11)
+        self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 11)
+        self.pub = self.create_publisher(Float32MultiArray, 'phase_reconstruction', 10)
+        
+        # Initialize the phase reconstruction volume message
+        self.phase_recon_msg = Float32MultiArray()
+        self.phase_recon_msg.layout.dim = [MultiArrayDimension(), MultiArrayDimension(), MultiArrayDimension()]
+        self.phase_recon_msg.layout.dim[0].label = "z"
+        self.phase_recon_msg.layout.dim[0].size = self.get_parameter("zyx_shape").value[0]
+        self.phase_recon_msg.layout.dim[0].stride = self.get_parameter("zyx_shape").value[1] * self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[1].label = "y"
+        self.phase_recon_msg.layout.dim[1].size = self.get_parameter("zyx_shape").value[1]
+        self.phase_recon_msg.layout.dim[1].stride = self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[2].label = "x"
+        self.phase_recon_msg.layout.dim[2].size = self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[2].stride = 1
+        
         self.get_logger().info("Phase reconstruction node started")
 
     def setup_parameters(self):
@@ -45,9 +61,7 @@ class PhaseReconstructionNode(Node):
         # Copy image data into tensor
         self.image_z_stack[self.image_count,:] = msg.data
         
-        #self.image_z_stack[self.image_count] = msg.data
         self.get_logger().info(f"Received image, I now have {self.image_count} images")
-        self.get_logger().info(f"{type(msg.data)}")
 
         if self.image_count == self.get_parameter("zyx_shape").value[0]-1:
             self.perform_phase_reconstruction()
@@ -92,6 +106,10 @@ class PhaseReconstructionNode(Node):
         
         self.get_logger().info(f"Reconstructed image w/ with shape {zyx_recon.shape}")
 
+        # Publish the reconstructed phase
+        self.phase_recon_msg.data = zyx_recon.numpy().flatten()
+        self.pub.publish(self.phase_recon_msg)
+        
 def main(args=None):
     rclpy.init(args=args)
 

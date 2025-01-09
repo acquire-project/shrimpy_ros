@@ -18,9 +18,11 @@ class PhaseReconstructionNode(Node):
         self.get_logger().info("Generating phase calibration")
         # calculate the phase calibration
         
-        self.image_z_stack = np.zeros( (self.get_parameter("zyx_shape").value[0],
-                                        self.get_parameter("zyx_shape").value[1] * self.get_parameter("zyx_shape").value[2]),
-                                        dtype=np.uint8)
+        # cache the zyx shape as a member, since its used in multiple places
+        self.zyx_shape = self.get_parameter("zyx_shape").value
+        (z, y, x) = self.zyx_shape  # 
+
+        self.image_z_stack = np.zeros( (z, y*x), dtype=np.uint8)
         self.generate_phase_calibration()
 
         self.image_count = 0
@@ -31,13 +33,13 @@ class PhaseReconstructionNode(Node):
         self.phase_recon_msg = Float32MultiArray()
         self.phase_recon_msg.layout.dim = [MultiArrayDimension(), MultiArrayDimension(), MultiArrayDimension()]
         self.phase_recon_msg.layout.dim[0].label = "z"
-        self.phase_recon_msg.layout.dim[0].size = self.get_parameter("zyx_shape").value[0]
-        self.phase_recon_msg.layout.dim[0].stride = self.get_parameter("zyx_shape").value[1] * self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[0].size = z
+        self.phase_recon_msg.layout.dim[0].stride = x
         self.phase_recon_msg.layout.dim[1].label = "y"
-        self.phase_recon_msg.layout.dim[1].size = self.get_parameter("zyx_shape").value[1]
-        self.phase_recon_msg.layout.dim[1].stride = self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[1].size = y
+        self.phase_recon_msg.layout.dim[1].stride = x 
         self.phase_recon_msg.layout.dim[2].label = "x"
-        self.phase_recon_msg.layout.dim[2].size = self.get_parameter("zyx_shape").value[2]
+        self.phase_recon_msg.layout.dim[2].size = x
         self.phase_recon_msg.layout.dim[2].stride = 1
         
         self.get_logger().info("Phase reconstruction node started")
@@ -63,7 +65,7 @@ class PhaseReconstructionNode(Node):
         
         self.get_logger().info(f"Received image, I now have {self.image_count} images")
 
-        if self.image_count == self.get_parameter("zyx_shape").value[0]-1:
+        if self.image_count == self.zyx_shape[0]-1:
             self.perform_phase_reconstruction()
             self.image_count = 0
         else:
@@ -76,7 +78,7 @@ class PhaseReconstructionNode(Node):
             self.real_potential_transfer_function,
             self.imag_potential_transfer_function,
         ) = phase_thick_3d.calculate_transfer_function(
-            zyx_shape=self.get_parameter("zyx_shape").value,
+            zyx_shape=self.zyx_shape,
             yx_pixel_size=self.get_parameter("yx_pixel_size").value,
             z_pixel_size=self.get_parameter("z_pixel_size").value,
             wavelength_illumination=self.get_parameter("wavelength_illumination").value,
@@ -92,7 +94,7 @@ class PhaseReconstructionNode(Node):
     def perform_phase_reconstruction(self):
         self.get_logger().info("Performing phase reconstruction")
 
-        tensor_z_stack = torch.tensor(self.image_z_stack.reshape(self.get_parameter("zyx_shape").value), dtype=torch.float32)
+        tensor_z_stack = torch.tensor(self.image_z_stack.reshape(self.zyx_shape), dtype=torch.float32)
         
         # Reconstruct
         zyx_recon = phase_thick_3d.apply_inverse_transfer_function(

@@ -47,7 +47,7 @@ class PhaseReconstructionNode(Node):
     def setup_parameters(self):
         # Define the simulation and transfer function arguments as parameters
         # These should be updated to match the microscope and camera setup
-        self.declare_parameter("zyx_shape", (11, 2448, 2048))
+        self.declare_parameter("zyx_shape", (11, 2048, 2448))
         self.declare_parameter("yx_pixel_size", 0.345)
         self.declare_parameter("z_pixel_size", 3)
         self.declare_parameter("index_of_refraction_media", 1)
@@ -60,7 +60,11 @@ class PhaseReconstructionNode(Node):
     
     def image_callback(self, msg: Image):
 
-        # Copy image data into tensor
+        if msg.width != self.zyx_shape[2] or msg.height != self.zyx_shape[1]:
+            self.get_logger().error(f"Image size mismatch: Expected {self.zyx_shape[1]}x{self.zyx_shape[2]}, got {msg.height}x{msg.width}")
+            raise ValueError("Image size mismatch")
+        
+        # Copy image data into the buffer
         self.image_z_stack[self.image_count,:] = msg.data
         
         self.get_logger().info(f"Received image, I now have {self.image_count} images")

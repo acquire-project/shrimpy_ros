@@ -118,6 +118,15 @@ def launch_setup(context, *args, **kwargs):
         name='phase_acquisition'
     )
     
+    phase_reconstruction = Node(
+        package='waveorder_ros',
+        executable='phase_reconstruction_node',
+        output='screen',
+        name='phase_reconstruction',
+        remappings=[
+            ('image_raw', '/flir_camera/image_raw'),
+        ],
+    )
     foxglove_bridge = Node(
         package='foxglove_bridge',
         executable='foxglove_bridge',
@@ -129,7 +138,8 @@ def launch_setup(context, *args, **kwargs):
         camera_node,
         triggerscope_node,
         phase_acquisition_server,
-        foxglove_bridge,
+        phase_reconstruction,
+        #foxglove_bridge,
     ]
     return nodes
 

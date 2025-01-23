@@ -96,6 +96,7 @@ def launch_setup(context, *args, **kwargs):
         executable='camera_driver_node',
         output='screen',
         name=[LaunchConfig('camera_name')],
+        #prefix=['gdbserver localhost:3000'],
         parameters=[
             example_parameters[camera_type],
             {
@@ -139,6 +140,20 @@ def launch_setup(context, *args, **kwargs):
         output='screen',
         name='phase_zarr_writer',
         parameters= [parameter_file],
+        remappings=[
+            ('image_data', '/phase_reconstruction'),
+        ],
+    )   
+    
+    raw_zarr_writer = Node(
+        package='acquire_zarr',
+        executable='image_zarr_writer_node',
+        output='screen',
+        name='raw_image_zarr_writer',
+        parameters= [parameter_file],
+        remappings=[
+            ('image_data', '/flir_camera/image_raw'),
+        ],
     )   
     
     foxglove_bridge = Node(
@@ -154,6 +169,7 @@ def launch_setup(context, *args, **kwargs):
         phase_acquisition_server,
         phase_reconstruction,
         phase_zarr_writer,
+        raw_zarr_writer,
         #foxglove_bridge,
     ]
     return nodes

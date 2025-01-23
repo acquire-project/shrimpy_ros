@@ -36,3 +36,31 @@
     use_sim_time: false
     zarr_out_path: /tmp/phase.zarr
 
+/raw_image_zarr_writer:
+  ros__parameters:
+    dimension_chunk_px:
+    - 1
+    - 1
+    - 2048
+    - 2448
+    dimension_names:
+    - 't'
+    - 'z'
+    - 'y'
+    - 'x'
+    dimension_shard_chunks:
+    - 1
+    - 1
+    - 1
+    - 1
+    dimension_sizes:
+    - 0
+    - 11
+    - 2048
+    - 2448
+    dimension_types:
+    - 2
+    - 0
+    - 0
+    - 0
+    zarr_out_path: /tmp/raw_data.zarr

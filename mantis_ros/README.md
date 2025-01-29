@@ -9,7 +9,7 @@ sequenceDiagram
 
     phase_acquisition_action->>triggerscope: set_analog_range(0-10V)
 
-    phase_acquisition_action->>triggerscope: set_digital_out(light_source_pin, on)
+    phase_acquisition_action->>triggerscope: set_digital_out(light_source_pin, ON)
 
     
     phase_acquisition_action->>triggerscope: control_analog_seq(analog pin, CLEAR)
@@ -21,17 +21,19 @@ sequenceDiagram
     phase_acquisition_action->>camera: multiframe_start(n_frames)
     
     loop n_frames:
-        camera->>zarr_writer: Image1
-        camera->>phase_reconstruction:: Image1
+        camera->>zarr_writer: Image
+        camera->>phase_reconstruction:: Image
     end
 
-
-    camera->>phase_acquisition_action: multiframe_start(n_frames)
+    camera->>phase_acquisition_action: multiframe_start(done)
     
+
+    phase_acquisition_action->>triggerscope: set_digital_out(light_source_pin, OFF)
+
+    phase_acquisition_action->>triggerscope: control_analog_seq(analog pin, STOP)
+
+    phase_reconstruction-->napari_veiwer: phase_volume
+
     phase_acquisition_action->>client: acquisition succeeded
-%%     iframe->>viewscreen: request template
-%%     viewscreen->>iframe: html & javascript
-%%     iframe->>dotcom: iframe ready
-%%     dotcom->>iframe: set mermaid data on iframe
-%%     iframe->>iframe: render mermaid
+
 ```

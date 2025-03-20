@@ -30,5 +30,8 @@ FROM ros-core-with-zenoh AS waveorder-ros
 RUN pip3 install --no-cache-dir --break-system-packages waveorder
 
 # Copy the built waveorder_ros package from the build stage
-COPY --from=build /ros_ws/install /ros_ws
+COPY --from=build /ros_ws/install /opt/ros/custom
+
+# COPY our custom
+COPY ros_entrypoint.sh /ros_entrypoint.sh
 

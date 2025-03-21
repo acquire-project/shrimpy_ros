@@ -67,7 +67,7 @@ class PhaseReconstructionNode(Node):
         # Copy image data into the buffer
         self.image_z_stack[self.image_count,:] = msg.data
         
-        self.get_logger().info(f"Received image, I now have {self.image_count} images")
+        self.get_logger().info(f"Received image, I now have {self.image_count+1} images")
 
         if self.image_count == self.zyx_shape[0]-1:
             self.perform_phase_reconstruction()

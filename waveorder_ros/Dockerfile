@@ -29,7 +29,7 @@ RUN colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select waveo
 FROM ros-core-with-zenoh AS waveorder-ros
 
 # Install waveorder-ros dependencies
-RUN pip3 install --no-cache-dir --break-system-packages waveorder
+RUN pip3 install --no-cache-dir --break-system-packages waveorder==2.1
 
 # Copy the built waveorder_ros package from the build stage
 COPY --from=build /ros_ws/install /opt/ros/custom

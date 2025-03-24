@@ -1,0 +1,15 @@
+BootStrap: docker
+From: ros:jazzy-ros-base 
+
+%post
+    apt-get update
+    apt-get install -y \
+      ros-jazzy-ament-cmake-vendor-package \
+      ros-jazzy-rmw-zenoh-cpp \
+      cargo \
+      python3-pip
+    rm -rf /var/lib/apt/lists/*
+    pip3 install --no-cache-dir --break-system-packages waveorder==2.1
+
+%environment
+    export RMW_IMPLEMENTATION="rmw_zenoh_cpp"

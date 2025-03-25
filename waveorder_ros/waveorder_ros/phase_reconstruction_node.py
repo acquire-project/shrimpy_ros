@@ -21,8 +21,10 @@ class PhaseReconstructionNode(Node):
         # cache the zyx shape as a member, since its used in multiple places
         self.zyx_shape = self.get_parameter("zyx_shape").value
         (z, y, x) = self.zyx_shape  # 
-
-        self.image_z_stack = np.zeros( (z, y*x), dtype=np.uint8)
+        
+        self.image_data_type = None # This is the data type of the images
+        self.image_z_stack = None # This will become the z-stack buffer, but it can't be allocated until the first image is received
+        
         self.generate_phase_calibration()
 
         self.image_count = 0
@@ -64,8 +66,20 @@ class PhaseReconstructionNode(Node):
             self.get_logger().error(f"Image size mismatch: Expected {self.zyx_shape[1]}x{self.zyx_shape[2]}, got {msg.height}x{msg.width}")
             raise ValueError("Image size mismatch")
         
+        # on first image, initialize the image stack
+        if self.image_z_stack is None:
+            match msg.encoding:
+                case 'mono8':
+                    self.image_data_type = np.uint8
+                case 'mono16':
+                    self.image_data_type = np.uint16
+                case _:
+                    raise ValueError(f"Unsupported encoding: {msg.encoding}")
+
+            self.image_z_stack = np.zeros((self.zyx_shape[0], self.zyx_shape[1]*self.zyx_shape[2]), dtype=self.image_data_type)
+            
         # Copy image data into the buffer
-        self.image_z_stack[self.image_count,:] = msg.data
+        self.image_z_stack[self.image_count,:] = np.frombuffer(msg.data, dtype=self.image_data_type)
         
         self.get_logger().info(f"Received image, I now have {self.image_count+1} images")
 
@@ -110,7 +124,7 @@ class PhaseReconstructionNode(Node):
             self.get_parameter("wavelength_illumination").value
         )
         
-        self.get_logger().info(f"Reconstructed image w/ with shape {zyx_recon.shape}")
+        self.get_logger().info(f"Reconstructed volume w/ with shape {zyx_recon.shape}")
 
         # Publish the reconstructed phase
         self.phase_recon_msg.data = zyx_recon.numpy().flatten()

@@ -14,6 +14,15 @@ class PhaseReconstructionNode(Node):
         super().__init__('phase_reconstruction_node')
         
         self.setup_parameters()
+
+        try:
+            from image_transport_py import ImageTransport
+            image_transport = ImageTransport('imagetransport_sub', image_transport='compressed')
+            image_transport.subscribe('image_raw', 10, self.image_callback)
+        except:
+            self.get_logger().warning("python image transport not found, falling back on publishing sensor_msgs:msg:Image topic")
+            self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 10)
+
         
         self.get_logger().info("Generating phase calibration")
         # calculate the phase calibration
@@ -22,13 +31,12 @@ class PhaseReconstructionNode(Node):
         self.zyx_shape = self.get_parameter("zyx_shape").value
         (z, y, x) = self.zyx_shape  # 
         
-        self.image_data_type = None # This is the data type of the images
+        self.image_data_type = None  # This is the data type of the images
         self.image_z_stack = None # This will become the z-stack buffer, but it can't be allocated until the first image is received
         
         self.generate_phase_calibration()
 
         self.image_count = 0
-        self.sub = self.create_subscription(Image, 'image_raw', self.image_callback, 11)
         self.pub = self.create_publisher(Float32MultiArray, 'phase_reconstruction', 10)
         
         # Initialize the phase reconstruction volume message

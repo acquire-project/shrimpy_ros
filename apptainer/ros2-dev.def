@@ -1,0 +1,17 @@
+BootStrap: docker
+From: ros:rolling-ros-base 
+
+%post
+    apt-get update
+    apt-get install -y \
+      ros-rolling-rmw-zenoh-cpp \
+      ros-rolling-image-transport-py \
+      python3-pip
+    rm -rf /var/lib/apt/lists/*
+    pip3 install --no-cache-dir --break-system-packages waveorder==2.1
+
+%environment
+    export RMW_IMPLEMENTATION="rmw_zenoh_cpp"
+
+%files
+    ros_entrypoint.sh /ros_entrypoint.sh

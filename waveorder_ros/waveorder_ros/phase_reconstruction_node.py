@@ -7,6 +7,7 @@ from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import numpy as np
 import torch
 from waveorder.models import phase_thick_3d
+import time
 
 class PhaseReconstructionNode(Node):
 
@@ -17,7 +18,11 @@ class PhaseReconstructionNode(Node):
 
         try:
             from image_transport_py import ImageTransport
-            image_transport = ImageTransport('imagetransport_sub', image_transport='compressed')
+            
+            # had problems with the image transport not remapping topic names correctly, so
+            # I'm considering it not implemented for now.
+            raise NotImplementedError("Image transport is not yet working properly")
+            image_transport = ImageTransport('imagetransport_sub', image_transport='raw')
             image_transport.subscribe('image_raw', 10, self.image_callback)
         except:
             self.get_logger().warning("python image transport not found, falling back on publishing sensor_msgs:msg:Image topic")
@@ -34,7 +39,7 @@ class PhaseReconstructionNode(Node):
         self.image_data_type = None  # This is the data type of the images
         self.image_z_stack = None # This will become the z-stack buffer, but it can't be allocated until the first image is received
         
-        self.generate_phase_calibration()
+        self.generate_transfer_function()
 
         self.image_count = 0
         self.pub = self.create_publisher(Float32MultiArray, 'phase_reconstruction', 10)
@@ -67,6 +72,8 @@ class PhaseReconstructionNode(Node):
         self.declare_parameter("numerical_aperture_illumination", 0.4)
         self.declare_parameter("numerical_aperture_detection", 0.45)
     
+        self.declare_parameter("pytorch_device", "cuda:0")
+        self.pytorch_device = self.get_parameter("pytorch_device").value
     
     def image_callback(self, msg: Image):
 
@@ -97,8 +104,9 @@ class PhaseReconstructionNode(Node):
         else:
             self.image_count += 1
 
-    def generate_phase_calibration(self):
+    def generate_transfer_function(self):
 
+        start_time = time.time()
         # Calculate transfer function
         (
             self.real_potential_transfer_function,
@@ -114,13 +122,19 @@ class PhaseReconstructionNode(Node):
             numerical_aperture_detection=self.get_parameter("numerical_aperture_detection").value,
         )
 
-        self.get_logger().info(f"Phase calibration generated with shape {self.real_potential_transfer_function.shape}")
+        if self.real_potential_transfer_function.device != self.pytorch_device:
+            self.real_potential_transfer_function = self.real_potential_transfer_function.to(self.pytorch_device)
+        if self.imag_potential_transfer_function.device != self.pytorch_device:
+            self.imag_potential_transfer_function = self.imag_potential_transfer_function.to(self.pytorch_device)
+            
+        self.get_logger().info(f"Transfer function generation took {time.time() - start_time} seconds with shape {self.real_potential_transfer_function.shape}")
 
     
     def perform_phase_reconstruction(self):
         self.get_logger().info("Performing phase reconstruction")
 
-        tensor_z_stack = torch.tensor(self.image_z_stack.reshape(self.zyx_shape), dtype=torch.float32)
+        start_time = time.time()
+        tensor_z_stack = torch.tensor(self.image_z_stack.reshape(self.zyx_shape), dtype=torch.float32, device=self.pytorch_device)
         
         # Reconstruct
         zyx_recon = phase_thick_3d.apply_inverse_transfer_function(
@@ -132,10 +146,10 @@ class PhaseReconstructionNode(Node):
             self.get_parameter("wavelength_illumination").value
         )
         
-        self.get_logger().info(f"Reconstructed volume w/ with shape {zyx_recon.shape}")
+        self.get_logger().info(f"Reconstructed volume, it took {time.time() - start_time} seconds with shape {zyx_recon.shape}")
 
         # Publish the reconstructed phase
-        self.phase_recon_msg.data = zyx_recon.numpy().flatten()
+        self.phase_recon_msg.data = zyx_recon.cpu().numpy().flatten()
         self.pub.publish(self.phase_recon_msg)
         
 def main(args=None):

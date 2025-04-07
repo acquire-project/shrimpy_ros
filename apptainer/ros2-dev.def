@@ -5,7 +5,6 @@ From: ros:rolling-ros-base
     apt-get update
     apt-get install -y \
       ros-rolling-rmw-zenoh-cpp \
-      ros-rolling-image-transport-py \
       python3-pip
     rm -rf /var/lib/apt/lists/*
     pip3 install --no-cache-dir --break-system-packages waveorder==2.1
